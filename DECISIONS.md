@@ -148,6 +148,17 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 
 ---
 
+## D-013: Swipes run in an IMMEDIATE transaction
+**Status:** Proposed (2026-11-18, Phase 2)
+
+**Context:** better-sqlite3 is synchronous, so one Node process already runs swipes one at a time. Two processes on the same file (two server instances, or the seed running during a request) could still interleave a normal `BEGIN` transaction.
+
+**Decision:** `swipe()` uses `db.transaction(...).immediate()`, which takes the write lock before reading anything.
+
+**Why:** The primary keys already stop duplicate rows. The lock also means the "already swiped?" and "do they like me?" checks always see a consistent state. It costs nothing at this scale. A test runs two connections against one file.
+
+---
+
 ## D-010: Deployment
 **Status:** Open (see Q-1)
 

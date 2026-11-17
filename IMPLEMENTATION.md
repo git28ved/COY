@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 1 done)
+Last updated: 2026-11-18 (Phase 2 done)
 
 ---
 
@@ -19,7 +19,7 @@ Last updated: 2026-11-18 (Phase 1 done)
 |---|---|---|---|
 | 0 | Project setup (workspaces) | ✅ | 1h |
 | 1 | Database and seed data | ✅ | 1.5h |
-| 2 | Service layer and unit tests | ⬜ | 2.5h |
+| 2 | Service layer and unit tests | ✅ | 2.5h |
 | 3 | Express routes and API tests | ⬜ | 1.5h |
 | 4 | React app shell and tab bar | ⬜ | 1h |
 | 5 | Swipe card and deck | ⬜ | 3h |
@@ -56,7 +56,7 @@ Coy-app/
 - [x] `npm test`: 2/2 pass
 - [x] `npm run typecheck`, `npm run lint` and `npm run build`: clean
 - [x] `git init` and first commit
-- [ ] Create the public GitHub repo and push (waiting for your OK)
+- [x] Public GitHub repo created and pushed: https://github.com/git28ved/COY
 
 **Notes**
 - The scaffolder picked React 19 (not 18) and TypeScript 7. Both are fine for this project.
@@ -97,7 +97,23 @@ Coy-app/
 
 ---
 
-## Phase 2: Service layer and unit tests ⭐ most important phase
+## Phase 2: Service layer and unit tests ⭐ most important phase ✅
+
+**Done 2026-11-18.** Commit: `feat(core): discover service with tests`.
+
+**Checks**
+- [x] 29 new tests (`discover-service.test.ts` 25, `serializers.test.ts` 4). `npm test`: 39/39 pass.
+- [x] `npm run coverage -w server`: `services/` is at 97% of lines and 91% of branches. `serializers.ts` is at 100%. The thresholds are enforced in `vitest.config.ts`.
+- [x] Typecheck, lint and build are clean.
+
+**Changes from the plan**
+- `swipe()` runs as `transaction.immediate()`, which takes the write lock before any check. Two server processes can't both pass the "already swiped?" check for the same pair.
+- `getFeed` also checks `limit` itself: an integer from 1 to 50 (`ValidationError`). The route will narrow it to 1–20.
+- The shuffle key is `sha256(userId + ':' + profileId)` (`feedOrderKey`). Ties can't happen in practice, and the order is the same on every reload.
+- `getMatches` breaks ties on `rowid` when two matches share the same millisecond, so "newest first" always holds.
+- `tests/helpers.ts` has a small fixture (`me`, plus alice, bob, cara, dan, nina and zoe). Some ids sort before `me` and some after, so both pair orders are tested. Phase 3 will reuse it.
+- Extra tests beyond the list: no turning a pass into a like to probe for a match; a match made from the other side; both users see the match; two DB connections double-liking create one match; the feed JSON contains no internal field names.
+
 
 **File:** `server/src/services/discover-service.ts`. Every function takes `db` as its first argument (D-003).
 
@@ -129,25 +145,25 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 **`errors.ts`:** typed errors (`NotFoundError`, `AlreadySwipedError`, `SelfSwipeError`, `ValidationError`) that carry a `status`, which the error middleware reads.
 
 **Tests (`server/tests/discover-service.test.ts`)**, each on a fresh `:memory:` DB with a small fixture:
-- [ ] feed excludes self
-- [ ] feed excludes profiles I liked or passed
-- [ ] feed *includes* profiles who passed on me (D-006)
-- [ ] feed order is identical with and without incoming likes (D-005) ⭐
-- [ ] feed order is stable across calls
-- [ ] like with no incoming like → `{ matched: false }`
-- [ ] like when they already liked me → `{ matched: true }` and a match row exists
-- [ ] like when they passed on me → `{ matched: false }`, identical to the no-swipe case ⭐
-- [ ] pass when they liked me → `{ matched: false }`, no match ⭐
-- [ ] second swipe on the same profile → `AlreadySwipedError`, and the original swipe is unchanged
-- [ ] swipe on self → `SelfSwipeError`
-- [ ] swipe on unknown id → `NotFoundError`
-- [ ] the match is created exactly once (pair ordering `a < b`)
-- [ ] `getMatches` returns newest first, only mutual ones
-- [ ] persistence: write with one `createDb(tmpFile)` handle, read with a new handle
+- [x] feed excludes self
+- [x] feed excludes profiles I liked or passed
+- [x] feed *includes* profiles who passed on me (D-006)
+- [x] feed order is identical with and without incoming likes (D-005) ⭐
+- [x] feed order is stable across calls
+- [x] like with no incoming like → `{ matched: false }`
+- [x] like when they already liked me → `{ matched: true }` and a match row exists
+- [x] like when they passed on me → `{ matched: false }`, identical to the no-swipe case ⭐
+- [x] pass when they liked me → `{ matched: false }`, no match ⭐
+- [x] second swipe on the same profile → `AlreadySwipedError`, and the original swipe is unchanged
+- [x] swipe on self → `SelfSwipeError`
+- [x] swipe on unknown id → `NotFoundError`
+- [x] the match is created exactly once (pair ordering `a < b`)
+- [x] `getMatches` returns newest first, only mutual ones
+- [x] persistence: write with one `createDb(tmpFile)` handle, read with a new handle
 
 **Tests (`server/tests/serializers.test.ts`)**
-- [ ] `Object.keys(toPublicProfile(row)).sort()` equals the exact whitelist ⭐
-- [ ] extra columns on the row (e.g. `liked_you`) are dropped
+- [x] `Object.keys(toPublicProfile(row)).sort()` equals the exact whitelist ⭐
+- [x] extra columns on the row (e.g. `liked_you`) are dropped
 
 **Done when:** all of the above pass and coverage of `services/` and `serializers.ts` is ≥ 90% (`vitest --coverage`).
 

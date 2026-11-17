@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 1 done: database and seed data)
+Last updated: 2026-11-18 (Phase 2 done: service layer and privacy tests)
 
 ---
 
@@ -35,14 +35,14 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [ ] One card at a time
 - [ ] Drag to swipe on mobile, buttons on desktop (plus keyboard arrows)
 - [ ] Smooth animations and clear LIKE / NOPE feedback
-- [ ] A swiped profile never appears again (enforced on the server, not only in the UI)
+- [ ] A swiped profile never appears again (enforced on the server, not only in the UI). *Server side done:* the swipes primary key, the `getFeed` filter and `AlreadySwipedError`, tested in `discover-service.test.ts`. The UI part comes in Phase 5.
 - [ ] Clear empty state
 
 **Matching**
-- [ ] A match only when both sides liked each other
+- [x] A match only when both sides liked each other: `swipe()` in `services/discover-service.ts`, with tests for like/like, like/pass, pass/like and the other side liking second
 - [ ] "It's a match!" screen at that moment
 - [ ] Matches view listing all mutual matches
-- [ ] No way to learn who liked you unless it is mutual (see section 5)
+- [ ] No way to learn who liked you unless it is mutual (see section 5). *Service layer done:* the whitelist serializer, a shuffle that ignores likes, identical pass and no-match responses. The HTTP layer is checked in Phase 3.
 
 **Backend APIs**
 - [ ] `GET /feed`: profiles not yet swiped on
@@ -123,11 +123,12 @@ This is the part we should be able to explain in an interview. Leaks can come th
 
 | Leak channel | Example of the bug | Our defence |
 |---|---|---|
-| Response fields | Feed profile includes `likedYou: true` | Profiles go through a **whitelist serializer**. Tests assert the exact set of keys. |
-| Feed ordering | Likers sorted to the front ("boost" logic) | Order is computed **without looking at incoming likes** (deterministic shuffle). A test checks that order is independent of likes. |
+| Response fields | Feed profile includes `likedYou: true` | Profiles go through a **whitelist serializer** (`toPublicProfile` in `serializers.ts`). Tests assert the exact set of keys and that joined extras like `liked_you` are dropped. |
+| Feed ordering | Likers sorted to the front ("boost" logic) | Order is `sha256(viewer:profile)` (`feedOrderKey`), computed **without looking at incoming likes**. A test compares the feed with and without incoming likes and passes: same order. |
 | Swipe response for a pass | `{ matched: false, theyLikedYou: true }` | A pass always returns the same shape `{ matched: false }`, whatever the other side did. |
 | Feed filtering | Hiding people who *passed* on you shrinks the feed and reveals rejections | The feed only excludes people **you** swiped on. |
-| Match timing | Matches shown before you have liked them | A match row is created only inside your like transaction. |
+| Match timing | Matches shown before you have liked them | A match row is created only inside your like transaction. `getMatches` reads only the `matches` table, so one-sided likes never appear (tested). |
+| Probing by re-swiping | Pass someone, then like them, to see if a match appears | Swipes are final. A second swipe gets `AlreadySwipedError` (409), and the original row is left unchanged (tested). |
 | Enumeration | `GET /profiles/:id/likes` or similar | No endpoint reads incoming likes. The only query touching `target_id = me` is inside the match check. |
 | Client bundle / devtools | Seed data with likes shipped to the browser | The likes data only exists server side. |
 
@@ -167,6 +168,20 @@ GET  /matches
 - **API tests (supertest against `createApp(memoryDb)`):** status codes and shapes for each endpoint.
 - **(Stretch) E2E:** Playwright swipe → match → appears in Matches → reload persists.
 
+### How the service works (Phase 2)
+
+`server/src/services/discover-service.ts` holds three functions. Each takes the database as its first argument.
+
+- **`getFeed(db, me, { limit })`** loads every user except me that *I* haven't swiped on. It sorts them by `sha256("me:" + id)` and returns the first `limit`, plus `remaining`. The query never touches swipes where I am the target.
+- **`swipe(db, me, target, direction)`** runs one `IMMEDIATE` transaction:
+  1. Reject a self-swipe (400) or an unknown target (404).
+  2. Insert the swipe. If the primary key already exists, return 409.
+  3. On a pass, return `{ matched: false }` straight away.
+  4. On a like, check *only now* whether the target liked me. If so, store the match (sorted pair, `INSERT OR IGNORE`) and return it.
+- **`getMatches(db, me)`** joins `matches` to `users` for the other person, newest first.
+
+Errors are typed classes in `errors.ts`, and each carries its HTTP status. Phase 3's error middleware will just read `err.status`.
+
 ## 9. How to run
 
 ```
@@ -174,6 +189,7 @@ npm install        # installs both workspaces
 npm run seed       # creates server/data/coy.db with 36 profiles
 npm run dev        # Express on :4000 + Vite on :5173 → open http://localhost:5173
 npm test           # server unit + API tests
+npm run coverage -w server   # coverage report, fails under 90% on services/ and serializers
 ```
 
 ## 10. Changelog
@@ -183,3 +199,5 @@ npm test           # server unit + API tests
 - 2026-11-18: Changed the stack to a React (Vite) frontend and a Node.js + Express backend (D-001 accepted). Updated the architecture, run commands and test approach.
 - 2026-11-18: Phase 0 done. npm workspaces with `server/` (Express 5, Vitest, supertest) and `client/` (Vite 8, React 19, Tailwind 4, framer-motion). Verified the dev proxy in the browser. Fixed a port clash (D-011).
 - 2026-11-18: Phase 1 done. SQLite schema with constraints and indexes, `createDb()`, 36 seed profiles (12 likers, 4 passers), and an idempotent `npm run seed`. 8 new tests: constraints, seed contents, reseed, and persistence across connections. The schema moved to a TS module (D-012).
+- 2026-11-18: Pushed to https://github.com/git28ved/COY.
+- 2026-11-18: Phase 2 done. `discover-service.ts` (feed, swipe, matches), a whitelist serializer, and typed errors. 29 new tests, including all the ⭐ privacy tests and a two-connection race. Coverage thresholds are enforced.
