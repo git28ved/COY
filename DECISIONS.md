@@ -187,5 +187,5 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 ## Open questions (for you to decide)
 
 - ~~**Q-1: Live demo URL?**~~ *Resolved by D-010 (Render free tier).* A deployed link helps a lot with reviewers. The best fit for Express + SQLite is Render or Railway with a persistent disk, as a single service. The alternative is local-only with a good README and a GIF.
-- **Q-2: Photos:** *(Phase 1 uses randomuser.me portrait URLs as a placeholder. They're set in one helper in `seed/profiles.ts`, so switching is a one-line change.)* An external placeholder service (e.g. randomuser.me portraits, realistic but external), or generated avatars committed to the repo (always works offline, less realistic).
+- **Q-2: Photos:** **Deferred (2026-11-18): we'll come back to photos later.** Known issue: randomuser.me portraits are only 128px, so they look blurry on a full-size card. Candidates: i.pravatar.cc at 600px, or about 36 sharp portraits committed to the repo. *(The URLs are set in one helper in `seed/profiles.ts`, so switching is a one-line change.)* An external placeholder service (e.g. randomuser.me portraits, realistic but external), or generated avatars committed to the repo (always works offline, less realistic).
 - **Q-3: Stretch goals** if time allows: Playwright E2E, undo last pass, filters (age or city), unmatch.

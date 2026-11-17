@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 5 done)
+Last updated: 2026-11-18 (Phase 6 done)
 
 ---
 
@@ -23,7 +23,7 @@ Last updated: 2026-11-18 (Phase 5 done)
 | 3 | Express routes and API tests | ✅ | 1.5h |
 | 4 | React app shell and tab bar | ✅ | 1h |
 | 5 | Swipe card and deck | ✅ | 3h |
-| 6 | Match overlay, Matches view, empty state | ⬜ | 2h |
+| 6 | Match overlay, Matches view, empty state | ✅ | 2h |
 | 7 | Polish, accessibility, error handling | ⬜ | 1.5h |
 | 8 | README, demo GIF, deployment | ⬜ | 1.5h |
 | 9 | Stretch goals (optional) | ⬜ | — |
@@ -308,7 +308,28 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 ---
 
-## Phase 6: Match overlay, Matches view, empty state
+## Phase 6: Match overlay, Matches view, empty state ✅
+
+**Done 2026-11-18.** Commit: `feat(ui): match modal and matches view`.
+
+**Checks** (headless Chrome at 390×844)
+- [x] Matches view with no matches → "No matches yet", and **Keep swiping** goes back to the deck
+- [x] Liking a seeded liker opens "It's a match! You and Naina like each other." with focus on **Keep swiping**
+- [x] While the overlay is open, → doesn't swipe the card behind it. Tab cycles between the two buttons only, and Esc closes it.
+- [x] Arrow keys work again after it closes
+- [x] **View matches** → `&view=matches`, newest first ("Yash, 19", then "Naina, 21"), with "Matched just now"
+- [x] After a reload, the Matches list is identical
+- [x] Swiping to the end → the illustrated "You're all caught up" with **See your 11 matches**. The ✕/♥ buttons are hidden.
+- [x] No console errors. Typecheck, lint and build are clean. Server tests are 69/69.
+
+**Changes from the plan**
+- **The overlay shows a "You" tile, not your photo.** The API has no `/me` endpoint, and adding one only for this felt like needless API surface.
+- **The overlay renders into the phone frame** (`#app-frame`, through a portal), so on desktop it covers the app, not the whole page.
+- **Matches made in quick succession queue up** and show one overlay at a time. **View matches** clears the queue.
+- **Opening the Matches view quietly re-syncs with `GET /matches`.**
+- **"Matched 5 min. ago"** uses `Intl.RelativeTimeFormat` (`lib/time.ts`) and refreshes every minute.
+- **Q-2 (photos) is deferred.** We'll come back to it.
+
 
 **Files** (`client/src/components/`)
 - `MatchModal.tsx`: full-screen overlay with "It's a match!", the user's and match's photos sliding in, a light confetti or heart burst, and **Keep swiping** / **View matches** buttons. Focus is trapped inside and `Esc` closes it. Uses `AnimatePresence`.

@@ -1,8 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useDiscoverFeed } from '../hooks/useDiscoverFeed'
 import { useMatches } from '../hooks/useMatches'
 import type { DiscoverView } from '../hooks/useUrlState'
+import type { Match } from '../types'
 import { CardDeck } from './CardDeck'
+import { MatchesList } from './MatchesList'
+import { MatchModal } from './MatchModal'
 import { Toast, type ToastMessage } from './Toast'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -26,18 +29,32 @@ interface Props {
  */
 export function DiscoverTab({ view, onViewChange, active }: Props) {
   const matches = useMatches()
+  const { refresh: refreshMatches } = matches
   const [toast, setToast] = useState<ToastMessage | null>(null)
-  const show = (text: string, tone: ToastMessage['tone']) => setToast({ id: Date.now(), text, tone })
   const clearToast = useCallback(() => setToast(null), [])
+  /** New matches waiting to be celebrated, shown one at a time (fast swiping can make several). */
+  const [celebrate, setCelebrate] = useState<Match[]>([])
+  const current = celebrate[0] ?? null
 
   const feed = useDiscoverFeed({
     onMatch: (match) => {
       matches.add(match)
-      // Phase 6 replaces this with the full-screen "It's a match!" overlay.
-      show(`It's a match with ${match.profile.name}!`, 'success')
+      setCelebrate((q) => [...q, match])
     },
-    onSwipeError: (err) => show(err.code === 'NETWORK' ? "You're offline. Card put back." : "Couldn't save that swipe. Try again.", 'error'),
+    onSwipeError: (err) =>
+      setToast({
+        id: Date.now(),
+        tone: 'error',
+        text: err.code === 'NETWORK' ? "You're offline. Card put back." : "Couldn't save that swipe. Try again.",
+      }),
   })
+
+  // Quietly re-sync with the server whenever the Matches view is opened.
+  useEffect(() => {
+    if (active && view === 'matches') refreshMatches()
+  }, [active, view, refreshMatches])
+
+  const closeModal = () => setCelebrate((q) => q.slice(1))
 
   return (
     <div className="relative flex h-full flex-col">
@@ -71,7 +88,7 @@ export function DiscoverTab({ view, onViewChange, active }: Props) {
         </div>
       </header>
 
-      <section className="min-h-0 flex-1">
+      <section className="min-h-0 flex-1" aria-label={view === 'deck' ? 'Profiles' : 'Your matches'}>
         {view === 'deck' ? (
           <CardDeck
             queue={feed.queue}
@@ -81,21 +98,29 @@ export function DiscoverTab({ view, onViewChange, active }: Props) {
             onRetry={feed.retry}
             onSwipe={feed.swipe}
             onShowMatches={() => onViewChange('matches')}
-            keyboardEnabled={active}
+            matchCount={matches.matches.length}
+            keyboardEnabled={active && !current}
           />
         ) : (
-          <p className="flex h-full items-center justify-center px-5 text-center text-ink-muted" aria-live="polite">
-            {matches.status === 'loading' && 'Loading matches…'}
-            {matches.status === 'error' && "Couldn't load matches."}
-            {matches.status === 'ready' &&
-              (matches.matches.length === 0
-                ? 'No matches yet. Keep swiping!'
-                : `${plural(matches.matches.length, 'match', 'matches')}: ${matches.matches.map((m) => m.profile.name).join(', ')}. Full list arrives in Phase 6.`)}
-          </p>
+          <MatchesList
+            matches={matches.matches}
+            status={matches.status}
+            error={matches.error}
+            onRetry={matches.retry}
+            onKeepSwiping={() => onViewChange('deck')}
+          />
         )}
       </section>
 
       <Toast toast={toast} onDone={clearToast} />
+      <MatchModal
+        match={current}
+        onKeepSwiping={closeModal}
+        onViewMatches={() => {
+          setCelebrate([])
+          onViewChange('matches')
+        }}
+      />
     </div>
   )
 }

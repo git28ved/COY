@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 5 done: swipe deck)
+Last updated: 2026-11-18 (Phase 6 done: match moment, Matches view, empty states)
 
 ---
 
@@ -36,12 +36,12 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [x] Drag to swipe on mobile, buttons on desktop (plus keyboard arrows) (`components/SwipeCard.tsx`, `CardDeck.tsx`)
 - [x] Smooth animations and clear LIKE / NOPE feedback (rotation with drag, fading stamps, spring-back, fly-out)
 - [x] A swiped profile never appears again (enforced on the server, not only in the UI). Checked in the browser: after a reload, the next card is always unswiped. *Server side:* the swipes primary key, the `getFeed` filter and `AlreadySwipedError`, tested in `discover-service.test.ts`.
-- [ ] Clear empty state (*basic version in Phase 5, polished in Phase 6*)
+- [x] Clear empty state (`components/EmptyDeck.tsx`, plus the empty Matches state in `MatchesList.tsx`)
 
 **Matching**
 - [x] A match only when both sides liked each other: `swipe()` in `services/discover-service.ts`, with tests for like/like, like/pass, pass/like and the other side liking second
-- [ ] "It's a match!" screen at that moment
-- [ ] Matches view listing all mutual matches
+- [x] "It's a match!" screen at that moment (`components/MatchModal.tsx`)
+- [x] Matches view listing all mutual matches (`components/MatchesList.tsx`)
 - [ ] No way to learn who liked you unless it is mutual (see section 5). *Service layer done:* the whitelist serializer, a shuffle that ignores likes, identical pass and no-match responses. The HTTP layer is checked in Phase 3.
 
 **Backend APIs**
@@ -177,6 +177,13 @@ GET  /matches
 - The **next two photos are preloaded**. A broken photo falls back to the person's initial.
 - With **`prefers-reduced-motion`**, a swipe fades the card instead of flinging it.
 
+**Match moment and Matches (Phase 6):**
+- `MatchModal` is an accessible dialog (`role=dialog`, `aria-modal`). Focus moves into it and back out, Tab is trapped, and Esc closes it. Deck keys are off while it's open.
+- It shows a "You" tile and the match's photo sliding together, plus a heart burst. With reduced motion, there's no burst or slide.
+- Several matches in quick succession queue up and show one at a time.
+- `MatchesList` shows a 2-column grid, newest first, with "Matched 5 min. ago". It has loading skeletons, an error with Retry, and a friendly empty state.
+- `EmptyDeck` shows an illustration, "You're all caught up", and a button to your matches with the count.
+
 - **Card stack:** the top card is draggable, and the next card sits behind it (scaled down slightly) so the next swipe feels instant.
 - **Gestures:** drag past a threshold (or flick fast enough) to commit. Otherwise the card springs back. The card rotates with drag distance. LIKE and NOPE stamps fade in with direction.
 - **Desktop:** ✕ / ♥ buttons plus ← / → keys.
@@ -229,3 +236,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Phase 3 done. Express routes (zod validation, strict body), a central error middleware with stable error codes, a JSON 404, production static serving, and graceful shutdown. 30 new tests, including a full-session privacy sweep over the real seed. 69/69 pass.
 - 2026-11-18: Phase 4 done. Tab shell (Home | Discover) with URL-synced tab and view, an accessible tab bar, a Discover/Matches switch with a match-count badge, typed API client and design tokens. Checked in headless Chrome at phone and desktop sizes.
 - 2026-11-18: Phase 5 done. Swipe deck: drag, flick, buttons and keys; LIKE/NOPE stamps; optimistic swipes that roll back on failure; prefetch; photo preload; basic loading, error and empty states; match and error toasts. Checked in the browser across all 36 profiles.
+- 2026-11-18: Phase 6 done. "It's a match!" overlay (focus trap, Esc, a queue for back-to-back matches), Matches grid with relative times, and illustrated empty states. Checked in the browser, including keyboard behaviour and reload persistence. Q-2 (photos) deferred.

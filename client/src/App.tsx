@@ -15,7 +15,7 @@ export default function App() {
 
   return (
     <div className="flex h-dvh items-center justify-center sm:py-6">
-      <div className="flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-surface pt-[env(safe-area-inset-top)] sm:rounded-[2.25rem] sm:shadow-2xl sm:ring-1 sm:ring-black/5">
+      <div id="app-frame" className="relative flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-surface pt-[env(safe-area-inset-top)] sm:rounded-[2.25rem] sm:shadow-2xl sm:ring-1 sm:ring-black/5">
         <main className="relative min-h-0 flex-1">
           <div id="panel-home" role="tabpanel" aria-labelledby="tab-home" hidden={tab !== 'home'} className="h-full">
             <HomeTab />

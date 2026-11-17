@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ApiError } from '../api'
 import type { Direction, Profile } from '../types'
+import { EmptyDeck } from './EmptyDeck'
 import { CloseIcon, HeartIcon } from './icons'
 import { SwipeCard, type SwipeCardHandle } from './SwipeCard'
 
@@ -12,6 +13,7 @@ interface Props {
   onRetry: () => void
   onSwipe: (profile: Profile, direction: Direction) => void
   onShowMatches: () => void
+  matchCount: number
   /** Keyboard shortcuts only work while the deck is on screen and nothing covers it. */
   keyboardEnabled: boolean
 }
@@ -20,7 +22,7 @@ interface Props {
  * The swipe deck: the top card plus the next one behind it, ✕/♥ buttons,
  * and ←/→ keys. Buttons and keys go through the same fly-out as a drag.
  */
-export function CardDeck({ queue, loading, empty, error, onRetry, onSwipe, onShowMatches, keyboardEnabled }: Props) {
+export function CardDeck({ queue, loading, empty, error, onRetry, onSwipe, onShowMatches, matchCount, keyboardEnabled }: Props) {
   const topRef = useRef<SwipeCardHandle>(null)
   const top = queue[0]
   const visible = queue.slice(0, 2)
@@ -63,18 +65,11 @@ export function CardDeck({ queue, loading, empty, error, onRetry, onSwipe, onSho
             </button>
           </Centered>
         )}
-        {!top && empty && (
-          <Centered>
-            <p className="text-lg font-bold text-ink">You're all caught up</p>
-            <p className="text-sm text-ink-muted">No new profiles right now.</p>
-            <button type="button" onClick={onShowMatches} className="mt-2 rounded-full bg-brand px-5 py-2 font-semibold text-white">
-              See your matches
-            </button>
-          </Centered>
-        )}
+        {!top && empty && <EmptyDeck matchCount={matchCount} onShowMatches={onShowMatches} />}
       </div>
 
-      <div className="flex shrink-0 items-center justify-center gap-8 pt-4">
+      {/* Hidden (not just disabled) when there's nothing left to swipe. */}
+      <div className={`flex shrink-0 items-center justify-center gap-8 pt-4 ${!top && !loading ? 'invisible' : ''}`}>
         <RoundButton label="Pass" disabled={!top} onClick={() => topRef.current?.swipe('pass')} className="text-nope">
           <CloseIcon className="size-7" />
         </RoundButton>
