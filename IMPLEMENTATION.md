@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 2 done)
+Last updated: 2026-11-18 (Phase 3 done)
 
 ---
 
@@ -20,7 +20,7 @@ Last updated: 2026-11-18 (Phase 2 done)
 | 0 | Project setup (workspaces) | ✅ | 1h |
 | 1 | Database and seed data | ✅ | 1.5h |
 | 2 | Service layer and unit tests | ✅ | 2.5h |
-| 3 | Express routes and API tests | ⬜ | 1.5h |
+| 3 | Express routes and API tests | ✅ | 1.5h |
 | 4 | React app shell and tab bar | ⬜ | 1h |
 | 5 | Swipe card and deck | ⬜ | 3h |
 | 6 | Match overlay, Matches view, empty state | ⬜ | 2h |
@@ -169,7 +169,25 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 ---
 
-## Phase 3: Express routes and API tests
+## Phase 3: Express routes and API tests ✅
+
+**Done 2026-11-18.** Commit: `feat(api): express routes with supertest`.
+
+**Checks**
+- [x] `npm test`: 69/69 pass (30 new: 26 in `api.test.ts`, plus 4 in `app.test.ts` covering the JSON 404 and production static serving)
+- [x] Smoke test against the real server with curl: `/feed`, a seeded liker → `matched: true`, a repeat swipe → 409, and the match shows up in `/matches`
+- [x] Production build (`NODE_ENV=production node dist/index.js`) serves the React `index.html` at `/` and the API on the same port
+- [x] Typecheck, lint and build are clean. Routes and middleware are at 100% coverage.
+
+**Changes from the plan**
+- `POST /swipe` body schema is `.strict()`, so unknown fields such as `swiperId` get a 400. Clients can't even try to act as someone else.
+- `targetId` is trimmed, 1–64 characters. A body over 10kb → 413 `PAYLOAD_TOO_LARGE`.
+- Every error body is `{ error, code }` with a stable machine `code` (`VALIDATION_ERROR`, `BAD_JSON`, `SELF_SWIPE`, `NOT_FOUND`, `ALREADY_SWIPED`, `INTERNAL`, ...). The client will switch on `code`, not on message text.
+- Unknown routes → JSON 404. In production, a GET that accepts HTML gets `index.html`, and API JSON 404s are still returned.
+- `index.ts` closes the DB on SIGINT/SIGTERM so WAL data is flushed when Render stops the service.
+- **Privacy sweep test:** swipes through the whole real seed deck over HTTP and checks that every key, at any depth of every response, is in the contract. It also checks that no internal words (`liked`, `direction`, `swiper`...) appear, and that the matches are exactly the likers I liked back.
+- The "no `liked`/`direction`/`swiper` strings" rule applies to success responses. A 400 may name the field the client sent wrong (e.g. `direction`). That only echoes the client's own input.
+
 
 **Files** (`server/src/`)
 - `app.ts`: `createApp(db)`:
@@ -191,15 +209,15 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 - `index.ts`: `createApp(createDb()).listen(PORT ?? 4000)`
 
 **Tests (`server/tests/api.test.ts`)**, using `request(createApp(memoryDbWithFixture))`:
-- [ ] `GET /feed` → 200 with the right shape
-- [ ] `GET /feed?limit=abc` → 400
-- [ ] `POST /swipe` with a bad body or malformed JSON → 400
-- [ ] `POST /swipe` on an unknown id → 404
-- [ ] `POST /swipe` twice → 409
-- [ ] `POST /swipe` like on a seeded liker → `matched: true`
-- [ ] `GET /matches` after that → contains the profile
-- [ ] no response body anywhere contains the strings `liked`, `direction` or `swiper` ⭐
-- [ ] a 500 never includes a stack trace
+- [x] `GET /feed` → 200 with the right shape
+- [x] `GET /feed?limit=abc` → 400
+- [x] `POST /swipe` with a bad body or malformed JSON → 400
+- [x] `POST /swipe` on an unknown id → 404
+- [x] `POST /swipe` twice → 409
+- [x] `POST /swipe` like on a seeded liker → `matched: true`
+- [x] `GET /matches` after that → contains the profile
+- [x] no response body anywhere contains the strings `liked`, `direction` or `swiper` ⭐
+- [x] a 500 never includes a stack trace
 
 **Done when:** `curl localhost:4000/feed` works and all server tests pass.
 

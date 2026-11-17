@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 2 done: service layer and privacy tests)
+Last updated: 2026-11-18 (Phase 3 done: HTTP API)
 
 ---
 
@@ -45,10 +45,10 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [ ] No way to learn who liked you unless it is mutual (see section 5). *Service layer done:* the whitelist serializer, a shuffle that ignores likes, identical pass and no-match responses. The HTTP layer is checked in Phase 3.
 
 **Backend APIs**
-- [ ] `GET /feed`: profiles not yet swiped on
-- [ ] `POST /swipe`: records like/pass, returns whether it created a match
-- [ ] `GET /matches`: mutual matches
-- [ ] Swipes and matches persist across reloads
+- [x] `GET /feed`: profiles not yet swiped on (`routes/discover.ts`, `tests/api.test.ts`)
+- [x] `POST /swipe`: records like/pass, returns whether it created a match
+- [x] `GET /matches`: mutual matches
+- [x] Swipes and matches persist across reloads (SQLite file. Tested by reopening the DB, and checked by hand across two server processes.)
 
 **App shell**
 - [ ] Bottom tab bar: blank **Home** tab and **Discover** tab
@@ -132,7 +132,7 @@ This is the part we should be able to explain in an interview. Leaks can come th
 | Enumeration | `GET /profiles/:id/likes` or similar | No endpoint reads incoming likes. The only query touching `target_id = me` is inside the match check. |
 | Client bundle / devtools | Seed data with likes shipped to the browser | The likes data only exists server side. |
 
-## 6. API contract (draft)
+## 6. API contract (implemented in Phase 3)
 
 ```
 GET  /feed?limit=10
@@ -141,15 +141,20 @@ GET  /feed?limit=10
 POST /swipe   { targetId: string, direction: "like" | "pass" }
 200 → { matched: false }
 200 → { matched: true, match: { profile: Profile, matchedAt } }
-400 → invalid body / swiping yourself
-404 → unknown profile
-409 → already swiped on this profile
+400 → invalid body (VALIDATION_ERROR), malformed JSON (BAD_JSON), swiping yourself (SELF_SWIPE)
+404 → unknown profile (NOT_FOUND)
+409 → already swiped on this profile (ALREADY_SWIPED)
+413 → body over 10kb (PAYLOAD_TOO_LARGE)
 
 GET  /matches
 200 → { matches: [{ profile: Profile, matchedAt }] }   newest first
 ```
 
 `Profile = { id, name, age, photoUrl, bio, city, college, interests[] }`. Nothing else.
+
+**Errors** always look like `{ error: string, code: string }`. A validation error also has `issues: [{ path, message }]`, describing only the client's own input. A 500 is always `{ error: "Something went wrong", code: "INTERNAL" }`. The real error is logged on the server, never sent.
+
+`GET /feed?limit=` accepts integers 1–20 (default 10). `POST /swipe` rejects unknown body fields. Every response has `Cache-Control: no-store`.
 
 ## 7. Frontend behaviour
 
@@ -202,3 +207,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Pushed to https://github.com/git28ved/COY.
 - 2026-11-18: Phase 2 done. `discover-service.ts` (feed, swipe, matches), a whitelist serializer, and typed errors. 29 new tests, including all the ⭐ privacy tests and a two-connection race. Coverage thresholds are enforced.
 - 2026-11-18: Deployment chosen: Render free tier, seed when the DB is empty (D-010). Accepted D-002, D-012 and D-013.
+- 2026-11-18: Phase 3 done. Express routes (zod validation, strict body), a central error middleware with stable error codes, a JSON 404, production static serving, and graceful shutdown. 30 new tests, including a full-session privacy sweep over the real seed. 69/69 pass.

@@ -1,11 +1,21 @@
 import express, { type Express } from 'express';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import type { Db } from './db/db.js';
+import { errorHandler, notFound } from './middleware/error.js';
+import { discoverRouter } from './routes/discover.js';
+
+export interface AppOptions {
+  /** Absolute path to the built React app (client/dist). Served in production only. */
+  clientDist?: string;
+}
 
 /**
- * Builds the Express app. Kept separate from `index.ts` (which calls `listen`)
- * so tests can drive the real HTTP layer with supertest, no open port needed.
- * Phase 3 adds the `db` parameter and the /feed, /swipe and /matches routes.
+ * Builds the Express app around a database. Kept separate from `index.ts`
+ * (which calls `listen`) so tests can drive the real HTTP layer with
+ * supertest on an in-memory DB, with no open port.
  */
-export function createApp(): Express {
+export function createApp(db: Db, { clientDist }: AppOptions = {}): Express {
   const app = express();
 
   app.disable('x-powered-by');
@@ -21,5 +31,24 @@ export function createApp(): Express {
     res.json({ status: 'ok' });
   });
 
+  app.use(discoverRouter(db));
+
+  // Production: one process serves the API and the React build (D-001).
+  // The UI uses ?tab= not paths, so only "/" and static assets are needed,
+  // but any other GET that wants HTML also gets index.html.
+  if (clientDist && existsSync(join(clientDist, 'index.html'))) {
+    app.use(express.static(clientDist, { index: 'index.html' }));
+    app.use((req, res, next) => {
+      if (req.method === 'GET' && req.accepts('html')) {
+        res.set('Cache-Control', 'no-cache');
+        res.sendFile(join(clientDist, 'index.html'));
+        return;
+      }
+      next();
+    });
+  }
+
+  app.use(notFound);
+  app.use(errorHandler);
   return app;
 }
