@@ -21,7 +21,7 @@ export default function App() {
             <HomeTab />
           </div>
           <div id="panel-discover" role="tabpanel" aria-labelledby="tab-discover" hidden={tab !== 'discover'} className="h-full">
-            <DiscoverTab view={view} onViewChange={setView} />
+            <DiscoverTab view={view} onViewChange={setView} active={tab === 'discover'} />
           </div>
         </main>
         <TabBar active={tab} onChange={setTab} />

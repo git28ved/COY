@@ -1,5 +1,9 @@
-import type { DiscoverView } from '../hooks/useUrlState'
+import { useCallback, useState } from 'react'
+import { useDiscoverFeed } from '../hooks/useDiscoverFeed'
 import { useMatches } from '../hooks/useMatches'
+import type { DiscoverView } from '../hooks/useUrlState'
+import { CardDeck } from './CardDeck'
+import { Toast, type ToastMessage } from './Toast'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
@@ -8,15 +12,35 @@ const VIEWS: { id: DiscoverView; label: string }[] = [
   { id: 'matches', label: 'Matches' },
 ]
 
+interface Props {
+  view: DiscoverView
+  onViewChange: (v: DiscoverView) => void
+  /** True while the Discover tab is the visible tab. */
+  active: boolean
+}
+
 /**
  * Discover tab: a segmented switch between the swipe deck and the Matches list.
- * Phase 5 fills in the deck and Phase 6 the Matches view.
+ * The feed and matches state live here (not in the deck), so switching views
+ * or tabs never loses the deck position.
  */
-export function DiscoverTab({ view, onViewChange }: { view: DiscoverView; onViewChange: (v: DiscoverView) => void }) {
-  const { matches, status } = useMatches()
+export function DiscoverTab({ view, onViewChange, active }: Props) {
+  const matches = useMatches()
+  const [toast, setToast] = useState<ToastMessage | null>(null)
+  const show = (text: string, tone: ToastMessage['tone']) => setToast({ id: Date.now(), text, tone })
+  const clearToast = useCallback(() => setToast(null), [])
+
+  const feed = useDiscoverFeed({
+    onMatch: (match) => {
+      matches.add(match)
+      // Phase 6 replaces this with the full-screen "It's a match!" overlay.
+      show(`It's a match with ${match.profile.name}!`, 'success')
+    },
+    onSwipeError: (err) => show(err.code === 'NETWORK' ? "You're offline. Card put back." : "Couldn't save that swipe. Try again.", 'error'),
+  })
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <header className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
         <h1 className="text-2xl font-extrabold tracking-tight text-ink">coy</h1>
         <div role="group" aria-label="Discover views" className="flex rounded-full bg-black/5 p-1">
@@ -33,12 +57,12 @@ export function DiscoverTab({ view, onViewChange }: { view: DiscoverView; onView
                 }`}
               >
                 {label}
-                {id === 'matches' && status === 'ready' && matches.length > 0 && (
+                {id === 'matches' && matches.status === 'ready' && matches.matches.length > 0 && (
                   <span
                     className="min-w-5 rounded-full bg-brand px-1.5 text-center text-xs leading-5 text-white"
-                    aria-label={plural(matches.length, 'match', 'matches')}
+                    aria-label={plural(matches.matches.length, 'match', 'matches')}
                   >
-                    {matches.length}
+                    {matches.matches.length}
                   </span>
                 )}
               </button>
@@ -47,18 +71,31 @@ export function DiscoverTab({ view, onViewChange }: { view: DiscoverView; onView
         </div>
       </header>
 
-      <section className="flex flex-1 items-center justify-center px-5 pb-6 text-center text-ink-muted" aria-live="polite">
+      <section className="min-h-0 flex-1">
         {view === 'deck' ? (
-          <p>Swipe deck arrives in Phase 5.</p>
+          <CardDeck
+            queue={feed.queue}
+            loading={feed.loading}
+            empty={feed.empty}
+            error={feed.error}
+            onRetry={feed.retry}
+            onSwipe={feed.swipe}
+            onShowMatches={() => onViewChange('matches')}
+            keyboardEnabled={active}
+          />
         ) : (
-          <p>
-            {status === 'loading' && 'Loading matches…'}
-            {status === 'error' && "Couldn't load matches."}
-            {status === 'ready' &&
-              (matches.length === 0 ? 'No matches yet. Keep swiping!' : `${plural(matches.length, 'match', 'matches')}. List arrives in Phase 6.`)}
+          <p className="flex h-full items-center justify-center px-5 text-center text-ink-muted" aria-live="polite">
+            {matches.status === 'loading' && 'Loading matches…'}
+            {matches.status === 'error' && "Couldn't load matches."}
+            {matches.status === 'ready' &&
+              (matches.matches.length === 0
+                ? 'No matches yet. Keep swiping!'
+                : `${plural(matches.matches.length, 'match', 'matches')}: ${matches.matches.map((m) => m.profile.name).join(', ')}. Full list arrives in Phase 6.`)}
           </p>
         )}
       </section>
+
+      <Toast toast={toast} onDone={clearToast} />
     </div>
   )
 }

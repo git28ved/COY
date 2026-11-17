@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 4 done: app shell and tab bar)
+Last updated: 2026-11-18 (Phase 5 done: swipe deck)
 
 ---
 
@@ -32,11 +32,11 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [x] Some seeded profiles have already liked the logged-in user: 12 likers (`INCOMING_LIKE_IDS`), plus 4 who passed (`INCOMING_PASS_IDS`) to prove rejections don't leak
 
 **Swipe experience**
-- [ ] One card at a time
-- [ ] Drag to swipe on mobile, buttons on desktop (plus keyboard arrows)
-- [ ] Smooth animations and clear LIKE / NOPE feedback
-- [ ] A swiped profile never appears again (enforced on the server, not only in the UI). *Server side done:* the swipes primary key, the `getFeed` filter and `AlreadySwipedError`, tested in `discover-service.test.ts`. The UI part comes in Phase 5.
-- [ ] Clear empty state
+- [x] One card at a time (`components/CardDeck.tsx`: top card plus one behind)
+- [x] Drag to swipe on mobile, buttons on desktop (plus keyboard arrows) (`components/SwipeCard.tsx`, `CardDeck.tsx`)
+- [x] Smooth animations and clear LIKE / NOPE feedback (rotation with drag, fading stamps, spring-back, fly-out)
+- [x] A swiped profile never appears again (enforced on the server, not only in the UI). Checked in the browser: after a reload, the next card is always unswiped. *Server side:* the swipes primary key, the `getFeed` filter and `AlreadySwipedError`, tested in `discover-service.test.ts`.
+- [ ] Clear empty state (*basic version in Phase 5, polished in Phase 6*)
 
 **Matching**
 - [x] A match only when both sides liked each other: `swipe()` in `services/discover-service.ts`, with tests for like/like, like/pass, pass/like and the other side liking second
@@ -169,6 +169,14 @@ GET  /matches
 - `api.ts` wraps fetch. Every failure becomes an `ApiError` with `status` and `code`. A network failure is `code: 'NETWORK'`.
 
 
+**Swipe deck (Phase 5):**
+- `hooks/useDiscoverFeed.ts` holds the local queue. It fetches `/feed?limit=10` on mount, and again when ≤ 3 cards are left, **but only when no swipe is in flight**. The server has then recorded everything we swiped and can't send it back. A local `swiped` set is a second guard against duplicates.
+- **Swiping is optimistic:** the card leaves at once and `POST /swipe` runs in the background. A network or 500 error puts the card back on top and shows a toast. A 409 or 404 counts as done (nothing to retry).
+- **`SwipeCard`:** drag on x only. Rotation is ±15° over ±200px, and the LIKE/NOPE stamps fade in between 20 and 120px. It commits at 120px **or** a 600px/s flick. Otherwise it springs back.
+- **Buttons and arrow keys** call the same `swipe()` through a ref. Each card can leave only once, so a double-tap can't send two requests.
+- The **next two photos are preloaded**. A broken photo falls back to the person's initial.
+- With **`prefers-reduced-motion`**, a swipe fades the card instead of flinging it.
+
 - **Card stack:** the top card is draggable, and the next card sits behind it (scaled down slightly) so the next swipe feels instant.
 - **Gestures:** drag past a threshold (or flick fast enough) to commit. Otherwise the card springs back. The card rotates with drag distance. LIKE and NOPE stamps fade in with direction.
 - **Desktop:** ✕ / ♥ buttons plus ← / → keys.
@@ -220,3 +228,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Deployment chosen: Render free tier, seed when the DB is empty (D-010). Accepted D-002, D-012 and D-013.
 - 2026-11-18: Phase 3 done. Express routes (zod validation, strict body), a central error middleware with stable error codes, a JSON 404, production static serving, and graceful shutdown. 30 new tests, including a full-session privacy sweep over the real seed. 69/69 pass.
 - 2026-11-18: Phase 4 done. Tab shell (Home | Discover) with URL-synced tab and view, an accessible tab bar, a Discover/Matches switch with a match-count badge, typed API client and design tokens. Checked in headless Chrome at phone and desktop sizes.
+- 2026-11-18: Phase 5 done. Swipe deck: drag, flick, buttons and keys; LIKE/NOPE stamps; optimistic swipes that roll back on failure; prefetch; photo preload; basic loading, error and empty states; match and error toasts. Checked in the browser across all 36 profiles.

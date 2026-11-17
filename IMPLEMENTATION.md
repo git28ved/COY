@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 4 done)
+Last updated: 2026-11-18 (Phase 5 done)
 
 ---
 
@@ -22,7 +22,7 @@ Last updated: 2026-11-18 (Phase 4 done)
 | 2 | Service layer and unit tests | ✅ | 2.5h |
 | 3 | Express routes and API tests | ✅ | 1.5h |
 | 4 | React app shell and tab bar | ✅ | 1h |
-| 5 | Swipe card and deck | ⬜ | 3h |
+| 5 | Swipe card and deck | ✅ | 3h |
 | 6 | Match overlay, Matches view, empty state | ⬜ | 2h |
 | 7 | Polish, accessibility, error handling | ⬜ | 1.5h |
 | 8 | README, demo GIF, deployment | ⬜ | 1.5h |
@@ -259,7 +259,29 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 ---
 
-## Phase 5: Swipe card and deck
+## Phase 5: Swipe card and deck ✅
+
+**Done 2026-11-18.** Commit: `feat(ui): swipe deck`.
+
+**Checks** (headless Chrome at 390×844, against the dev server, all 36 seed profiles)
+- [x] A short drag springs back and keeps the same card. A long drag left passes. The LIKE/NOPE stamps fade in as you drag.
+- [x] The ♥ button, the ← key and the → key each advance one card
+- [x] A rapid double-tap on ♥ sends **1** request (the input lock works)
+- [x] Offline (`/swipe` aborted): the card comes back on top, with the toast "You're offline. Card put back."
+- [x] Liking seeded likers → a match toast, and the Matches badge count goes up
+- [x] After a reload, the top card is the server's next unswiped profile. No swiped profile comes back.
+- [x] Swiping through the whole deck → "You're all caught up", and the server feed is `[]`. 37 requests in total: 36 plus the 1 deliberately failed offline.
+- [x] No console errors. Typecheck, lint and build are clean. Server tests are 69/69.
+
+**Changes from the plan**
+- **No `dragSnapToOrigin`.** On release, the card either flies out or springs back to 0 by our own `animate()` call, so the two animations never fight. `dragMomentum={false}`.
+- **One `SwipeCard` component for both positions** (top and behind), keyed by profile id. When the top card leaves, the one behind keeps its instance and springs from 0.95 to 1 scale.
+- **The feed only fetches when no swipe is in flight.** Then the server already knows every card we've swiped and never sends one back. A local `swiped` set is a second guard.
+- **Feed and matches state live in `DiscoverTab`, not the deck.** Flipping to Matches and back keeps the queue.
+- **Pulled forward from Phase 6/7:** a basic skeleton, error + Retry, an "all caught up" empty state, `Toast`, and `prefers-reduced-motion` (a fade instead of the fly-out). Phase 6 polishes them.
+- **A match currently shows a toast.** Phase 6 replaces it with the full-screen overlay.
+- **Photos** fall back to the person's initial on a gradient if the image fails to load.
+
 
 **Files** (`client/src/`)
 - `components/SwipeCard.tsx`
