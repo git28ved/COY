@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 0 done)
+Last updated: 2026-11-18 (Phase 1 done)
 
 ---
 
@@ -18,7 +18,7 @@ Last updated: 2026-11-18 (Phase 0 done)
 | # | Phase | Status | Est. |
 |---|---|---|---|
 | 0 | Project setup (workspaces) | ✅ | 1h |
-| 1 | Database and seed data | ⬜ | 1.5h |
+| 1 | Database and seed data | ✅ | 1.5h |
 | 2 | Service layer and unit tests | ⬜ | 2.5h |
 | 3 | Express routes and API tests | ⬜ | 1.5h |
 | 4 | React app shell and tab bar | ⬜ | 1h |
@@ -62,11 +62,24 @@ Coy-app/
 - The scaffolder picked React 19 (not 18) and TypeScript 7. Both are fine for this project.
 - `npm audit` reports 6 "high" issues, all from **picomatch** (ReDoS) inside Vite's dev tooling. The advisory covers every published version, so no fix exists yet. It only runs at build or dev time on our own file globs and is never shipped to users. Recheck before submitting.
 
-## Phase 1: Database and seed data
+## Phase 1: Database and seed data ✅
+
+**Done 2026-11-18.** Commit: `feat(db): schema and seed`.
+
+**Checks**
+- [x] `npm run seed` → `select count(*) from users` gives 37; swipes: 12 likes and 4 passes towards `me`
+- [x] `server/tests/db-seed.test.ts`: 8 tests (schema constraints, seed contents, idempotent reseed, persistence across connections). `npm test` 10/10.
+- [x] `npm run typecheck` and `npm run build -w server` clean
+
+**Changes from the plan**
+- The schema is `db/schema.ts` (an exported string), not `schema.sql`. `tsc` doesn't copy `.sql` files into `dist/`, so the production build couldn't find them (D-012).
+- The default DB path is resolved from the server folder, not the current directory, so `npm run seed` and `npm start` always use `server/data/coy.db`, wherever they're run from.
+- The schema also has `CHECK` constraints: `swiper_id <> target_id` and `user_a < user_b`. The database itself blocks self-swipes and duplicate match pairs.
+- `seed(db)` is an exported function, so tests seed `:memory:` with the real data. The CLI entry only runs when the file is executed directly.
 
 **Files** (`server/src/`)
 - `db/db.ts`: `createDb(path = process.env.DB_PATH ?? 'data/coy.db')` turns on `foreign_keys` and WAL mode, then runs the schema. Tests pass `':memory:'`.
-- `db/schema.sql`: the `users`, `swipes` and `matches` tables (EXPLANATION section 4), plus indexes:
+- `db/schema.ts` (planned as `schema.sql`): the `users`, `swipes` and `matches` tables (EXPLANATION section 4), plus indexes:
   - `swipes(target_id, swiper_id)`: used by the reverse lookup in the match check
   - `matches(user_a)` and `matches(user_b)`
 - `constants.ts`: `CURRENT_USER_ID = 'me'`

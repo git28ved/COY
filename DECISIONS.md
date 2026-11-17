@@ -133,6 +133,21 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 
 ---
 
+## D-012: Schema lives in a TypeScript module, not a .sql file
+**Status:** Proposed (2026-11-18, Phase 1)
+
+**Context:** The plan had `db/schema.sql`, read at startup. `tsc` only emits `.ts` files, so `dist/` would have no `schema.sql` and the production server would crash on boot.
+
+**Options:** Copy the file in a build step, read it from `src/` at runtime, or export the SQL as a string from `schema.ts`.
+
+**Decision:** `server/src/db/schema.ts` exports `SCHEMA`. Every statement uses `IF NOT EXISTS`, so `createDb()` applies it on every start.
+
+**Why:** No extra build step, and dev and prod behave the same. The SQL is still in one readable place.
+
+**Consequences:** No migration system. That's fine for a demo whose data can be reseeded at any time. A real app would need versioned migrations.
+
+---
+
 ## D-010: Deployment
 **Status:** Open (see Q-1)
 
@@ -141,5 +156,5 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 ## Open questions (for you to decide)
 
 - **Q-1: Live demo URL?** A deployed link helps a lot with reviewers. The best fit for Express + SQLite is Render or Railway with a persistent disk, as a single service. The alternative is local-only with a good README and a GIF.
-- **Q-2: Photos:** an external placeholder service (e.g. randomuser.me portraits, realistic but external), or generated avatars committed to the repo (always works offline, less realistic).
+- **Q-2: Photos:** *(Phase 1 uses randomuser.me portrait URLs as a placeholder. They're set in one helper in `seed/profiles.ts`, so switching is a one-line change.)* An external placeholder service (e.g. randomuser.me portraits, realistic but external), or generated avatars committed to the repo (always works offline, less realistic).
 - **Q-3: Stretch goals** if time allows: Playwright E2E, undo last pass, filters (age or city), unmatch.

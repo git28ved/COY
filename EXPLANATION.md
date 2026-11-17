@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 0 done: scaffold runs end to end)
+Last updated: 2026-11-18 (Phase 1 done: database and seed data)
 
 ---
 
@@ -28,8 +28,8 @@ So the reviewer will look closely at three things:
 Each item gets ticked off with a pointer to the code and the test that proves it.
 
 **Profile data**
-- [ ] 30+ seeded profiles (name, age, photo, bio, city/college, interests)
-- [ ] Some seeded profiles have already liked the logged-in user
+- [x] 30+ seeded profiles (name, age, photo, bio, city/college, interests): 36 in `server/src/seed/profiles.ts`, checked in `tests/db-seed.test.ts`
+- [x] Some seeded profiles have already liked the logged-in user: 12 likers (`INCOMING_LIKE_IDS`), plus 4 who passed (`INCOMING_PASS_IDS`) to prove rejections don't leak
 
 **Swipe experience**
 - [ ] One card at a time
@@ -114,6 +114,8 @@ matches(
 
 - Seeded "they already liked me" data is just rows in `swipes` where `target_id = 'me'`. Nothing special about it, and nothing exposes it.
 - The primary key on `swipes` makes "never appears again" a **database guarantee**, not just UI behaviour.
+- `CHECK` constraints also block a self-swipe (`swiper_id <> target_id`) and a match stored in the wrong order (`user_a < user_b`). Foreign keys are turned on per connection.
+- The schema is in `server/src/db/schema.ts` (D-012). `createDb()` applies it on every start, and every statement is `IF NOT EXISTS`.
 
 ## 5. Privacy model: how "never reveal who liked you" is enforced
 
@@ -180,3 +182,4 @@ npm test           # server unit + API tests
 - 2026-11-18: Added IMPLEMENTATION.md, which splits the build into phases 0–9 with tasks, tests and completion criteria.
 - 2026-11-18: Changed the stack to a React (Vite) frontend and a Node.js + Express backend (D-001 accepted). Updated the architecture, run commands and test approach.
 - 2026-11-18: Phase 0 done. npm workspaces with `server/` (Express 5, Vitest, supertest) and `client/` (Vite 8, React 19, Tailwind 4, framer-motion). Verified the dev proxy in the browser. Fixed a port clash (D-011).
+- 2026-11-18: Phase 1 done. SQLite schema with constraints and indexes, `createDb()`, 36 seed profiles (12 likers, 4 passers), and an idempotent `npm run seed`. 8 new tests: constraints, seed contents, reseed, and persistence across connections. The schema moved to a TS module (D-012).
