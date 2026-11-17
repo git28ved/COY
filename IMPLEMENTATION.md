@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 3 done)
+Last updated: 2026-11-18 (Phase 4 done)
 
 ---
 
@@ -21,7 +21,7 @@ Last updated: 2026-11-18 (Phase 3 done)
 | 1 | Database and seed data | ✅ | 1.5h |
 | 2 | Service layer and unit tests | ✅ | 2.5h |
 | 3 | Express routes and API tests | ✅ | 1.5h |
-| 4 | React app shell and tab bar | ⬜ | 1h |
+| 4 | React app shell and tab bar | ✅ | 1h |
 | 5 | Swipe card and deck | ⬜ | 3h |
 | 6 | Match overlay, Matches view, empty state | ⬜ | 2h |
 | 7 | Polish, accessibility, error handling | ⬜ | 1.5h |
@@ -223,7 +223,28 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 ---
 
-## Phase 4: React app shell and tab bar
+## Phase 4: React app shell and tab bar ✅
+
+**Done 2026-11-18.** Commit: `feat(ui): tab shell`.
+
+**Checks** (driven in headless Chrome at 390×844 with touch, using playwright-core against the running dev server)
+- [x] Opens on Discover by default (`?tab=discover`)
+- [x] Clicking Home → `?tab=home`, and the Discover panel is `hidden`. A reload stays on Home.
+- [x] ←/→ on the focused tab switches tabs, and focus follows (WAI-ARIA tabs pattern)
+- [x] Discover | Matches switch → `?tab=discover&view=matches`, kept after a reload
+- [x] After a match exists, the Matches badge shows the count ("1 match")
+- [x] Desktop (1280×800): the app sits in a centred phone frame
+- [x] No console errors. Typecheck, lint and build are clean.
+
+**Changes from the plan**
+- **Default tab is Discover** when there's no `?tab=`, so a reviewer lands straight on the product. Home is still the first tab in the bar.
+- **The Discover sub-view is in the URL too** (`&view=matches`), not just the tab.
+- **Both tab panels stay mounted.** The inactive one gets the `hidden` attribute, so going to Home and back never loses the deck position or refetches it.
+- **`replaceState`, not `pushState`:** switching tabs doesn't fill the back-button history.
+- **`hooks/useMatches.ts`** was added now, because the Matches badge needs it. Phase 6 reuses it, along with its `add()` for instant updates after a match.
+- **`api.ts`** turns network failures into `ApiError(0, 'NETWORK')` and server errors into `ApiError(status, code)` from the `{ error, code }` body.
+- **Design tokens** are in `index.css` `@theme`: `brand`, `like`, `nope`, `ink`, `ink-muted`, `surface`, `backdrop`.
+
 
 **Files** (`client/src/`)
 - `main.tsx`, `index.css`: Tailwind; mobile-first container (max-width ~430px centred on desktop), `100dvh`, safe-area padding

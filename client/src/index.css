@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Design tokens. Used as Tailwind utilities: text-brand, bg-surface, text-ink-muted... */
+@theme {
+  --color-brand: #7c3aed;
+  --color-brand-soft: #ede9fe;
+  --color-like: #10b981;
+  --color-nope: #f43f5e;
+  --color-ink: #1f1235;
+  --color-ink-muted: #6b6280;
+  --color-surface: #ffffff;
+  --color-backdrop: #f4f1fb;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
 :root {
   color-scheme: light;
 }
@@ -12,7 +25,15 @@ body,
 
 body {
   margin: 0;
-  background: #f4f1fb;
+  background: var(--color-backdrop);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* `hidden` must win over Tailwind's display utilities on tab panels. */
+[hidden] {
+  display: none !important;
 }

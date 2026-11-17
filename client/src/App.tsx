@@ -1,24 +1,31 @@
-import { useEffect, useState } from 'react'
+import { DiscoverTab } from './components/DiscoverTab'
+import { HomeTab } from './components/HomeTab'
+import { TabBar } from './components/TabBar'
+import { useUrlState } from './hooks/useUrlState'
 
-// Phase 0 placeholder: proves the client and the Express API are wired together.
-// Phase 4 replaces this with the Home | Discover tab shell.
-function App() {
-  const [api, setApi] = useState<'checking' | 'ok' | 'down'>('checking')
-
-  useEffect(() => {
-    fetch('/health')
-      .then((res) => setApi(res.ok ? 'ok' : 'down'))
-      .catch(() => setApi('down'))
-  }, [])
+/**
+ * App shell: a phone-sized column (full screen on mobile, a centred "phone"
+ * on desktop) with the content area on top and the tab bar at the bottom.
+ *
+ * Both tab panels stay mounted and the inactive one is `hidden`, so switching
+ * to Home and back never loses the deck's position or refetches it.
+ */
+export default function App() {
+  const { tab, view, setTab, setView } = useUrlState()
 
   return (
-    <main className="mx-auto flex h-dvh max-w-[430px] flex-col items-center justify-center gap-3 bg-white px-4 text-center">
-      <h1 className="text-3xl font-bold text-violet-700">Coy Discover</h1>
-      <p className="text-sm text-gray-500">
-        API: <span data-testid="api-status">{api}</span>
-      </p>
-    </main>
+    <div className="flex h-dvh items-center justify-center sm:py-6">
+      <div className="flex h-full w-full max-w-[430px] flex-col overflow-hidden bg-surface pt-[env(safe-area-inset-top)] sm:rounded-[2.25rem] sm:shadow-2xl sm:ring-1 sm:ring-black/5">
+        <main className="relative min-h-0 flex-1">
+          <div id="panel-home" role="tabpanel" aria-labelledby="tab-home" hidden={tab !== 'home'} className="h-full">
+            <HomeTab />
+          </div>
+          <div id="panel-discover" role="tabpanel" aria-labelledby="tab-discover" hidden={tab !== 'discover'} className="h-full">
+            <DiscoverTab view={view} onViewChange={setView} />
+          </div>
+        </main>
+        <TabBar active={tab} onChange={setTab} />
+      </div>
+    </div>
   )
 }
-
-export default App

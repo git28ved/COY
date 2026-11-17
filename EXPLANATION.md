@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 3 done: HTTP API)
+Last updated: 2026-11-18 (Phase 4 done: app shell and tab bar)
 
 ---
 
@@ -51,7 +51,7 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [x] Swipes and matches persist across reloads (SQLite file. Tested by reopening the DB, and checked by hand across two server processes.)
 
 **App shell**
-- [ ] Bottom tab bar: blank **Home** tab and **Discover** tab
+- [x] Bottom tab bar: blank **Home** tab and **Discover** tab (`client/src/App.tsx`, `components/TabBar.tsx`, `components/HomeTab.tsx`)
 
 ## 3. Architecture: React (Vite) + Node.js/Express
 
@@ -74,7 +74,10 @@ coy-discover/                      npm workspaces root (`npm run dev` starts bot
     ├── vite.config.ts             → dev proxy: /feed /swipe /matches → :4000
     └── src/
         ├── App.tsx                → tab shell (Home | Discover)
-        ├── api.ts                 → typed fetch wrappers
+        ├── api.ts                 → typed fetch wrappers + ApiError
+        ├── types.ts               → copy of the server's API contract
+        ├── hooks/useUrlState.ts   → ?tab= / &view= state
+        ├── hooks/useMatches.ts    → GET /matches (badge, Matches view)
         ├── hooks/useDiscoverFeed.ts
         └── components/            → SwipeCard, CardDeck, MatchModal, MatchesList, EmptyDeck, TabBar
 ```
@@ -158,6 +161,14 @@ GET  /matches
 
 ## 7. Frontend behaviour
 
+**App shell (Phase 4):**
+- On a phone it's a full-screen column; on desktop, a centred 430px "phone". The content is on top and the tab bar at the bottom, with safe-area padding for notched phones.
+- The tab is kept in `?tab=home|discover`, and the Discover sub-view in `&view=matches`, so a reload keeps your place. This uses query params, never paths, so pages can't collide with `/feed`, `/swipe` and `/matches`.
+- Both tab panels stay mounted and the inactive one is `hidden`. Switching tabs never resets the deck.
+- The tab bar follows the WAI-ARIA tabs pattern (`role=tablist`, roving tabindex, ←/→/Home/End).
+- `api.ts` wraps fetch. Every failure becomes an `ApiError` with `status` and `code`. A network failure is `code: 'NETWORK'`.
+
+
 - **Card stack:** the top card is draggable, and the next card sits behind it (scaled down slightly) so the next swipe feels instant.
 - **Gestures:** drag past a threshold (or flick fast enough) to commit. Otherwise the card springs back. The card rotates with drag distance. LIKE and NOPE stamps fade in with direction.
 - **Desktop:** ✕ / ♥ buttons plus ← / → keys.
@@ -208,3 +219,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Phase 2 done. `discover-service.ts` (feed, swipe, matches), a whitelist serializer, and typed errors. 29 new tests, including all the ⭐ privacy tests and a two-connection race. Coverage thresholds are enforced.
 - 2026-11-18: Deployment chosen: Render free tier, seed when the DB is empty (D-010). Accepted D-002, D-012 and D-013.
 - 2026-11-18: Phase 3 done. Express routes (zod validation, strict body), a central error middleware with stable error codes, a JSON 404, production static serving, and graceful shutdown. 30 new tests, including a full-session privacy sweep over the real seed. 69/69 pass.
+- 2026-11-18: Phase 4 done. Tab shell (Home | Discover) with URL-synced tab and view, an accessible tab bar, a Discover/Matches switch with a match-count badge, typed API client and design tokens. Checked in headless Chrome at phone and desktop sizes.
