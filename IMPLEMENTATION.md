@@ -276,7 +276,7 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 - [ ] `README.md`: one-line pitch, GIF, live link, quick start, API table, **Privacy section** (a short version of EXPLANATION section 5), test command and output, project structure, trade-offs and what I'd do next
 - [ ] Record a 20–30s GIF: swipe → match → Matches → reload
-- [ ] Deploy as **one Render (or Railway) web service**: build `npm ci && npm run build && npm run seed`, start `npm start`, with a persistent disk mounted for `DB_PATH` (depends on Q-1)
+- [ ] Deploy as **one Render free web service** (D-010): build `npm ci && npm run build`, start `npm start`. The server seeds on startup if the DB is empty, with no disk. Add `render.yaml`, and a cold-start note in the README.
 - [ ] GitHub Actions: `lint`, `typecheck` and `test` on push (a green badge in the README)
 - [ ] Final pass over EXPLANATION.md so every checklist item points to code and tests
 

@@ -34,7 +34,7 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 ---
 
 ## D-002: Storage: SQLite via better-sqlite3
-**Status:** Proposed
+**Status:** Accepted (2026-11-18)
 
 **Options:** JSON file, SQLite, Postgres (hosted).
 
@@ -46,7 +46,7 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 - `:memory:` databases make tests fast and isolated.
 - Postgres would be overkill for one user and adds setup for the reviewer.
 
-**Consequences:** Express is a long-running process, so it fits hosts with a persistent disk (Render or Railway, see D-010). Serverless hosts like Vercel are out unless we swap to Turso.
+**Consequences:** Express is a long-running process, so it needs a host that runs one. D-010 picks Render's free tier, which has no persistent disk. Serverless hosts like Vercel are out unless we swap to Turso.
 
 ---
 
@@ -134,7 +134,7 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 ---
 
 ## D-012: Schema lives in a TypeScript module, not a .sql file
-**Status:** Proposed (2026-11-18, Phase 1)
+**Status:** Accepted (2026-11-18, Phase 1)
 
 **Context:** The plan had `db/schema.sql`, read at startup. `tsc` only emits `.ts` files, so `dist/` would have no `schema.sql` and the production server would crash on boot.
 
@@ -149,7 +149,7 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 ---
 
 ## D-013: Swipes run in an IMMEDIATE transaction
-**Status:** Proposed (2026-11-18, Phase 2)
+**Status:** Accepted (2026-11-18, Phase 2)
 
 **Context:** better-sqlite3 is synchronous, so one Node process already runs swipes one at a time. Two processes on the same file (two server instances, or the seed running during a request) could still interleave a normal `BEGIN` transaction.
 
@@ -159,13 +159,33 @@ Explanations of *how* things work live in [EXPLANATION.md](EXPLANATION.md). This
 
 ---
 
-## D-010: Deployment
-**Status:** Open (see Q-1)
+## D-010: Deployment: Render free tier, seed when the DB is empty
+**Status:** Accepted (2026-11-18)
+
+**Context:** This is an assignment. We want a free live link reviewers can open, and Express + SQLite needs a long-running process.
+
+**Options:**
+1. Render free web service, no disk, seed on start if empty ← **chosen**
+2. Railway, or Render paid with a persistent disk (~$5–7/month): always on, data survives restarts
+3. Vercel or Netlify: serverless, so it needs a hosted DB such as Turso. Too much change for no gain here.
+4. Local only, with a README and a GIF
+
+**Decision:** Option 1. One Render web service runs Express, serving both the API and `client/dist`. On startup the server seeds the database if the `users` table is empty. It never wipes existing data.
+
+**Why:**
+- It's free, and it's one URL for the whole app.
+- Swipes and matches still persist across page reloads while the instance runs, which is what the brief asks for.
+- The filesystem resets when the service sleeps or redeploys. For a demo this helps: every reviewer gets a fresh deck with the seeded likers, instead of a previous visitor's state. This is a single-user app, so all visitors share one `me`.
+
+**Consequences:**
+- Cold start: the first request after about 15 minutes idle takes roughly 30–60 seconds. Mitigations: a note in the README, a demo GIF, and opening the link before sharing it.
+- Phase 8 work: seed-if-empty on startup, a `render.yaml` (build `npm ci && npm run build`, start `npm start`), and optionally a "Reset demo" button.
+- Moving to option 2 later only means mounting a disk and setting `DB_PATH`. No code changes.
 
 ---
 
 ## Open questions (for you to decide)
 
-- **Q-1: Live demo URL?** A deployed link helps a lot with reviewers. The best fit for Express + SQLite is Render or Railway with a persistent disk, as a single service. The alternative is local-only with a good README and a GIF.
+- ~~**Q-1: Live demo URL?**~~ *Resolved by D-010 (Render free tier).* A deployed link helps a lot with reviewers. The best fit for Express + SQLite is Render or Railway with a persistent disk, as a single service. The alternative is local-only with a good README and a GIF.
 - **Q-2: Photos:** *(Phase 1 uses randomuser.me portrait URLs as a placeholder. They're set in one helper in `seed/profiles.ts`, so switching is a one-line change.)* An external placeholder service (e.g. randomuser.me portraits, realistic but external), or generated avatars committed to the repo (always works offline, less realistic).
 - **Q-3: Stretch goals** if time allows: Playwright E2E, undo last pass, filters (age or city), unmatch.

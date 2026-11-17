@@ -201,3 +201,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Phase 1 done. SQLite schema with constraints and indexes, `createDb()`, 36 seed profiles (12 likers, 4 passers), and an idempotent `npm run seed`. 8 new tests: constraints, seed contents, reseed, and persistence across connections. The schema moved to a TS module (D-012).
 - 2026-11-18: Pushed to https://github.com/git28ved/COY.
 - 2026-11-18: Phase 2 done. `discover-service.ts` (feed, swipe, matches), a whitelist serializer, and typed errors. 29 new tests, including all the ⭐ privacy tests and a two-connection race. Coverage thresholds are enforced.
+- 2026-11-18: Deployment chosen: Render free tier, seed when the DB is empty (D-010). Accepted D-002, D-012 and D-013.
