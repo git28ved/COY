@@ -1,0 +1,26 @@
+{
+  "name": "coy-discover",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Swipe-based Discover tab for Coy: React + Express + SQLite",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c magenta,cyan \"npm:dev -w server\" \"npm:dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm start -w server",
+    "test": "npm test -w server",
+    "seed": "npm run seed -w server",
+    "reset": "npm run seed -w server",
+    "lint": "npm run lint -w client",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
+  }
+}
