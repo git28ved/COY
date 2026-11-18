@@ -9,7 +9,7 @@ The step-by-step build plan. Each phase ends in something runnable and testable,
 
 Status legend: ⬜ not started · 🟨 in progress · ✅ done
 
-Last updated: 2026-11-18 (Phase 6 done)
+Last updated: 2026-11-18 (Phase 7 done)
 
 ---
 
@@ -24,7 +24,7 @@ Last updated: 2026-11-18 (Phase 6 done)
 | 4 | React app shell and tab bar | ✅ | 1h |
 | 5 | Swipe card and deck | ✅ | 3h |
 | 6 | Match overlay, Matches view, empty state | ✅ | 2h |
-| 7 | Polish, accessibility, error handling | ⬜ | 1.5h |
+| 7 | Polish, accessibility, error handling | ✅ | 1.5h |
 | 8 | README, demo GIF, deployment | ⬜ | 1.5h |
 | 9 | Stretch goals (optional) | ⬜ | — |
 
@@ -342,17 +342,31 @@ Then sort by `hash(userId + ':' + u.id)` (D-005). **This query never reads swipe
 
 ---
 
-## Phase 7: Polish, accessibility, error handling
+## Phase 7: Polish, accessibility, error handling ✅
 
-- [ ] Buttons have `aria-label`s; the card has an accessible name ("Priya, 21, Delhi University")
-- [ ] `prefers-reduced-motion` (`useReducedMotion`): replace the fly-out with a fade
-- [ ] Image `alt` text; `loading="eager"` on the top card, `decoding="async"`
-- [ ] Haptic feedback on mobile (`navigator.vibrate?.(10)`) on commit
-- [ ] Toast on network failure; the card is restored
-- [ ] Lighthouse mobile run: aim for ≥ 90 on Performance and Accessibility
-- [ ] ESLint and `tsc --noEmit` clean in both workspaces
+**Done 2026-11-18.** Commit: `polish: a11y, performance and privacy audit`.
 
----
+- [x] Buttons have `aria-label`s, and the card has an accessible name ("Priya, 21, Delhi University"). Done in Phase 5.
+- [x] `prefers-reduced-motion` (`useReducedMotion`) replaces the fly-out with a fade, and the match overlay drops its burst and slide. A full browser session with reduced motion on swiped every card.
+- [x] Image `alt` text, `loading="eager"` on the top card, `decoding="async"`
+- [x] Haptic feedback on mobile (`navigator.vibrate?.(10)`) when a swipe commits. *Not testable in headless Chrome. It's a no-op where unsupported, e.g. iOS Safari.*
+- [x] Toast on network failure, and the card comes back. Done in Phase 5.
+- [x] **Lighthouse on mobile (production build), two runs: Performance 96 · Accessibility 100 · Best Practices 100 · SEO 100.** FCP 1.6 s, LCP 2.4–2.7 s, CLS 0.
+- [x] Lint and `tsc --noEmit` are clean in both workspaces
+
+**Added in this phase**
+- **Screen-reader announcements:** a hidden `role=status` region says "Liked Myra." / "Passed on Naina." after each swipe. Checked in the browser.
+- **`ErrorBoundary` around the app:** a render crash shows "Something went wrong" with a Reload button instead of a blank page. *Not exercised in the browser; there's no safe way to trigger a crash without test-only code.*
+- **Performance fixes found by Lighthouse** (it scored 81 before):
+  - gzip through `compression` (the JS goes from 226 KB to about 71 KB)
+  - `/assets/*` cached for a year as `immutable`, with HTML on `no-cache`. That also re-enables the back/forward cache, which a blanket `no-store` had blocked.
+  - `robots.txt`, a meta description and `theme-color`
+  - a preconnect to the photo host
+- **Security headers on every response:** `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`. A CSP is deferred until the photo host is settled (Q-2).
+- **Frontend privacy audit:**
+  - The built bundle has no seed data, ids or internal field names. `direction` only appears as CSS `flex-direction`, inside the animation library, and in the client's own outgoing swipe.
+  - In a full browser session, all 43 API responses held only contract keys.
+- Server tests: 72 (+3: security headers, cache headers per file type, gzip).
 
 ## Phase 8: README, demo, deployment
 

@@ -39,6 +39,8 @@ export function SwipeCard({ profile, isTop, onSwiped, ref }: Props) {
   function flyOut(direction: Direction) {
     if (leaving.current) return
     leaving.current = true
+    // A tiny haptic tick on phones that support it (no-op elsewhere, e.g. iOS Safari).
+    navigator.vibrate?.(10)
     const done = () => onSwiped(direction)
     if (reduceMotion) {
       // No big movement for people who asked for less motion: a quick fade.

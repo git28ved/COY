@@ -3,7 +3,7 @@
 A running explanation of what we are building, how it works, and why it is shaped this way.
 **Kept up to date as the code changes.** Every design choice that has trade-offs gets a matching entry in [DECISIONS.md](DECISIONS.md). The phase-by-phase build plan is in [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
-Last updated: 2026-11-18 (Phase 6 done: match moment, Matches view, empty states)
+Last updated: 2026-11-18 (Phase 7 done: polish, accessibility, performance, privacy audit)
 
 ---
 
@@ -42,7 +42,7 @@ Each item gets ticked off with a pointer to the code and the test that proves it
 - [x] A match only when both sides liked each other: `swipe()` in `services/discover-service.ts`, with tests for like/like, like/pass, pass/like and the other side liking second
 - [x] "It's a match!" screen at that moment (`components/MatchModal.tsx`)
 - [x] Matches view listing all mutual matches (`components/MatchesList.tsx`)
-- [ ] No way to learn who liked you unless it is mutual (see section 5). *Service layer done:* the whitelist serializer, a shuffle that ignores likes, identical pass and no-match responses. The HTTP layer is checked in Phase 3.
+- [x] No way to learn who liked you unless it is mutual (see section 5). Enforced in the service (whitelist serializer, a shuffle that ignores likes, identical pass and no-match responses), checked over HTTP (`api.test.ts` privacy sweep), and audited in the browser (Phase 7: the bundle has no seed data, and all 43 responses in a full session held only contract keys).
 
 **Backend APIs**
 - [x] `GET /feed`: profiles not yet swiped on (`routes/discover.ts`, `tests/api.test.ts`)
@@ -133,7 +133,7 @@ This is the part we should be able to explain in an interview. Leaks can come th
 | Match timing | Matches shown before you have liked them | A match row is created only inside your like transaction. `getMatches` reads only the `matches` table, so one-sided likes never appear (tested). |
 | Probing by re-swiping | Pass someone, then like them, to see if a match appears | Swipes are final. A second swipe gets `AlreadySwipedError` (409), and the original row is left unchanged (tested). |
 | Enumeration | `GET /profiles/:id/likes` or similar | No endpoint reads incoming likes. The only query touching `target_id = me` is inside the match check. |
-| Client bundle / devtools | Seed data with likes shipped to the browser | The likes data only exists server side. |
+| Client bundle / devtools | Seed data with likes shipped to the browser | The likes data only exists server side. Phase 7 audit: searching the production bundle finds no seed names, bios, ids or internal field names. A full browser session's API traffic held only contract keys. |
 
 ## 6. API contract (implemented in Phase 3)
 
@@ -192,6 +192,15 @@ GET  /matches
 - **Match moment:** a full-screen "It's a match!" overlay with both photos, plus "Keep swiping" and "View matches".
 - **Empty state:** a friendly message with a link to Matches.
 
+**Polish (Phase 7):**
+- Screen readers hear each swipe ("Liked Myra."). Every button has a label, and every card has an accessible name.
+- A phone gives a 10ms haptic tick when a swipe commits.
+- A top-level error boundary turns a crash into a friendly Reload screen.
+- **Lighthouse on mobile: Performance 96, Accessibility 100, Best Practices 100, SEO 100.** Server-side settings:
+  - gzip
+  - hashed `/assets` cached for a year, HTML on `no-cache`, API on `no-store`
+  - `nosniff`, `no-referrer` and `DENY` framing headers
+
 ## 8. Testing plan
 
 - **Unit (service layer, in-memory SQLite):** like → no match; like → match when they liked first; pass never matches; double swipe rejected; feed excludes swiped; feed excludes self; match created exactly once; concurrent double-like does not create 2 matches.
@@ -237,3 +246,4 @@ npm run coverage -w server   # coverage report, fails under 90% on services/ and
 - 2026-11-18: Phase 4 done. Tab shell (Home | Discover) with URL-synced tab and view, an accessible tab bar, a Discover/Matches switch with a match-count badge, typed API client and design tokens. Checked in headless Chrome at phone and desktop sizes.
 - 2026-11-18: Phase 5 done. Swipe deck: drag, flick, buttons and keys; LIKE/NOPE stamps; optimistic swipes that roll back on failure; prefetch; photo preload; basic loading, error and empty states; match and error toasts. Checked in the browser across all 36 profiles.
 - 2026-11-18: Phase 6 done. "It's a match!" overlay (focus trap, Esc, a queue for back-to-back matches), Matches grid with relative times, and illustrated empty states. Checked in the browser, including keyboard behaviour and reload persistence. Q-2 (photos) deferred.
+- 2026-11-18: Phase 7 done. Screen-reader swipe announcements, haptics, an error boundary, gzip and cache headers, security headers, and robots.txt and meta. Lighthouse mobile went from 81 to 96 on Performance, with 100 on the other three. Frontend privacy audit of the bundle and live traffic. 72 server tests.

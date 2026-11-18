@@ -35,6 +35,8 @@ export function DiscoverTab({ view, onViewChange, active }: Props) {
   /** New matches waiting to be celebrated, shown one at a time (fast swiping can make several). */
   const [celebrate, setCelebrate] = useState<Match[]>([])
   const current = celebrate[0] ?? null
+  /** Read out by screen readers after each swipe ("Liked Priya."). */
+  const [announcement, setAnnouncement] = useState('')
 
   const feed = useDiscoverFeed({
     onMatch: (match) => {
@@ -96,7 +98,10 @@ export function DiscoverTab({ view, onViewChange, active }: Props) {
             empty={feed.empty}
             error={feed.error}
             onRetry={feed.retry}
-            onSwipe={feed.swipe}
+            onSwipe={(profile, direction) => {
+              setAnnouncement(direction === 'like' ? `Liked ${profile.name}.` : `Passed on ${profile.name}.`)
+              feed.swipe(profile, direction)
+            }}
             onShowMatches={() => onViewChange('matches')}
             matchCount={matches.matches.length}
             keyboardEnabled={active && !current}
@@ -112,6 +117,9 @@ export function DiscoverTab({ view, onViewChange, active }: Props) {
         )}
       </section>
 
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
       <Toast toast={toast} onDone={clearToast} />
       <MatchModal
         match={current}
